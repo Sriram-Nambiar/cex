@@ -95,13 +95,37 @@ return res.json({ success: true, token, balance: BALANCES[user.id] });
 // --- Orders ---
 app.post("/order", (req, res) => {
   // body: { userId, side: "BUY"|"SELL", type: "LIMIT"|"MARKET", symbol, price?, qty }
+  const { userId, side, type, symbol, price, qty} = req.body;
   // 1. validate input + stock exists
+  if(!userId || !side || !type || !symbol || !qty) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+  if (!STOCKS.find(s => s.symbol === symbol)) {
+    return res.status(400).json({ error: "Invalid stock symbol" });
+  }
   // 2. check + lock balance (INR for BUY, stock for SELL)
+    if (side === "BUY") {
+    const totalCost = price * qty;
+    if (!BALANCES[userId] || !BALANCES[userId].INR || BALANCES[userId].INR.available < totalCost) {
+      return res.status(400).json({ error: "Insufficient INR balance" });
+    }
+    BALANCES[userId].INR.available -= totalCost;
+    BALANCES[userId].INR.locked += totalCost;
+  } else {
+    if (!BALANCES[userId] || !BALANCES[userId][symbol] || BALANCES[userId][symbol].available < qty) {
+      return res.status(400).json({ error: `Insufficient ${symbol} balance` });
+    }
+    BALANCES[userId][symbol].available -= qty;
+    BALANCES[userId][symbol].locked += qty;
+
+  }
   // 3. run matching engine against opposite side of ORDERBOOK
+  
   // 4. write fills to FILLS, update filledQty + status on ORDERS
   // 5. if leftover qty and LIMIT, rest on book; if MARKET, cancel remainder
   // 6. settle balances on each fill (move locked -> other asset's available)
 });
+   
 
 app.delete("/order/:orderId", (req, res) => {
   // 1. find order, check ownership
