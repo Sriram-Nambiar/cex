@@ -1,8 +1,14 @@
 import "dotenv/config";
+import { createClient } from "redis";
+
 import express from "express";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as JWT from "jsonwebtoken";
+
+const client = await createClient()
+  .on("error", (err) => console.log("Redis Client Error", err))
+  .connect();
 
 // 1. Initialize the adapter with your database URL
 const adapter = new PrismaPg({
@@ -156,6 +162,7 @@ app.get("/stocks", (req, res) => {
 // --- User data ---
 app.get("/balance", (req, res) => {
   // return BALANCES[userId] for the authed user
+  res.json(BALANCES);
 });
 
 
